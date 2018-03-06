@@ -18,8 +18,8 @@ const tile = {
   minWidth: 200,
   height: 500
 }; */
-import { fromEvent } from 'rxjs/index';
-import { tap, map, mergeMap, takeUntil } from 'rxjs/operators';
+import { fromEvent, Subject, merge } from 'rxjs/index';
+import { tap, map, mergeMap, takeUntil, switchMap, ignoreElements } from 'rxjs/operators';
 
 class Card extends Component {
   defaultState = {
@@ -30,35 +30,63 @@ class Card extends Component {
     isDragging: false
   };
   state = {
-    ...this.defaultState
+    ...this.defaultState,
+    whatever: false
+
   };
   card = null;
 
-  componentDidMount() {
-    const mouseDown$ = fromEvent(this.card, 'mousedown');
-    const mouseMove$ = fromEvent(document, 'mousemove');
-    const mouseUp$ = fromEvent(document, 'mouseup');
-    /* const targetMouseDown$ = mouseDown$.pipe(
-      filter((e) => e.target.matches('.froot-snack'))
-    ); */
+  mouseDown$ = new Subject();
 
-    const mouseDrag$ = mouseDown$.pipe(
-      tap((mouseMoveEvent) => {
-        const { width, height } = this.card.getBoundingClientRect();
-        this.setState({ width, height, isDragging: true });
-      }),
+  componentDidMount() {
+    /* const mouseMove$ = fromEvent(document, 'mousemove');
+    const mouseUp$ = fromEvent(document, 'mouseup'); */
+    const dragstart$ = fromEvent(document, 'dragstart');
+    const dragstop$ = fromEvent(document, 'dragstop');
+    const drag$ = fromEvent(document, 'drag');
+    const dragenter$ = fromEvent(document, 'dragenter');
+    const dragleave$ = fromEvent(document, 'dragleave');
+
+    const dragRequest$ = dragstart$.pipe(
+      switchMap(({ target: dragged }) =>
+        merge(
+          dragenter$.pipe(
+            tap(({ target }) => {
+              target.style.border = '2px solid green';
+            }),
+            switchMap(({ target: dropped }) =>
+              dragstop$.pipe(
+                map(() => ({
+                  dragged,
+                  dropped
+                }))
+              )
+            )
+          ),
+          dragleave$.pipe(
+            tap(({ target  }) => {
+              target.style.border = '';
+            }),
+            ignoreElements()
+          )
+        )
+      )
+    );
+
+    dragRequest$.subscribe(({ dragged, dropped }) => {
+      //const dragged = dragged.parentNode;
+      //dropped.parentNode.insertBefore(dragged, dropped);
+    });
+
+    /* const mouseDrag$ = dragstart$.pipe(
       mergeMap(({ target: draggable, offsetX: startX, offsetY: startY }) =>
-        mouseMove$.pipe(
-          tap((mouseMoveEvent) => {
-            console.log({startX, startY})
-            mouseMoveEvent.preventDefault()
-          }),
+        dragenter$.pipe(
           map(mouseMoveEvent => ({
             left: mouseMoveEvent.clientX - startX,
             top: mouseMoveEvent.clientY - startY,
             draggable
           })),
-          takeUntil(mouseUp$.pipe(
+          takeUntil(dragstop$.pipe(
             tap(() => {
               this.setState({ isDragging: false });
             })
@@ -66,11 +94,12 @@ class Card extends Component {
         )
       )
     );
-
     mouseDrag$.subscribe(({ left, top }) => {
-      console.log({ left, top });
-      this.setState({ left, top, isDragging: true });
-    });
+      //console.log({ left, top });
+      //this.setState({ left, top, isDragging: true });
+    }); */
+
+    
   }
 
   render() {
@@ -85,8 +114,13 @@ class Card extends Component {
 
     return (
       <div className="mdc-layout-grid__cell">
-  
-        <div className="mdc-card" ref={node => this.card = node} style={dragStyle}>
+        <div
+          className="mdc-card"
+          ref={node => this.card = node}
+          style={dragStyle}
+          onMouseDown={event => this.mouseDown$.next(event)}
+          draggable
+        >
           <div style={{ backgroundColor: 'red', width: '100%', height: 300 }} />
           <div className="mdc-card__actions">
             <div className="mdc-card__action-buttons">

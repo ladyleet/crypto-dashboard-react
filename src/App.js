@@ -19,7 +19,7 @@ const tile = {
   height: 500
 }; */
 import { fromEvent, Subject, merge } from 'rxjs/index';
-import { tap, map, mergeMap, takeUntil, switchMap, ignoreElements } from 'rxjs/operators';
+import { tap, map, mergeMap, takeUntil, switchMap, ignoreElements, filter } from 'rxjs/operators';
 
 class Card extends Component {
   defaultState = {
@@ -48,11 +48,21 @@ class Card extends Component {
     const dragleave$ = fromEvent(document, 'dragleave');
 
     const dragRequest$ = dragstart$.pipe(
+      tap(event => {
+        event.dataTransfer.effectAllowed = 'move';
+      }),
       switchMap(({ target: dragged }) =>
         merge(
           dragenter$.pipe(
-            tap(({ target }) => {
-              target.style.border = '2px solid green';
+            filter(event => {
+              event.preventDefault();
+              console.log(event.target.className);
+              return event.target.classList.contains('mdc-layout-grid__cell');
+            }),
+            tap(event => {
+              console.log(event.target.className);
+              event.dataTransfer.dropEffect = 'move';
+              event.target.style.boxShadow = '0px 0px 100px rgba(0, 255, 0, 1)';
             }),
             switchMap(({ target: dropped }) =>
               dragstop$.pipe(
@@ -65,7 +75,7 @@ class Card extends Component {
           ),
           dragleave$.pipe(
             tap(({ target  }) => {
-              target.style.border = '';
+              target.style.boxShadow = '';
             }),
             ignoreElements()
           )

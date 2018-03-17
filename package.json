@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@material/card": "^0.31.0",
+    "d3": "^4.13.0",
     "material-components-web": "^0.31.0",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",

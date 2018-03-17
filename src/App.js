@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import * as d3 from 'd3';
 import logo from './logo.svg';
 import './App.css';
 import 'material-components-web/dist/material-components-web.css';
@@ -18,8 +19,57 @@ const tile = {
   minWidth: 200,
   height: 500
 }; */
-import { fromEvent, Subject, merge } from 'rxjs/index';
-import { tap, map, mergeMap, takeUntil, switchMap, ignoreElements, filter } from 'rxjs/operators';
+import { Observable, fromEvent, Subject, merge } from 'rxjs/index';
+import { ajax } from 'rxjs/ajax';
+import { tap, map, mergeMap, take, takeUntil, switchMap, ignoreElements, filter } from 'rxjs/operators';
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/*
+
+curl https://rest.coinapi.io/v1/symbols --request GET --header "X-CoinAPI-Key: 73034021-0EBC-493D-8A00-E0F138111F41"
+  */
+
+/*function coinApi(options) {
+  const headers = {
+    'X-CoinAPI-Key': '4EC05E71-AAD9-4BAF-9782-D49509599CE3',
+    ...options.headers
+  };
+  return ajax({ headers, ...options });
+}
+
+function symbolIdFor(options) {
+  return `${exchangeId}_SPOT_${asset_id_base}_${asset_id_quote}`;
+}
+
+function fetchSymbols() {
+  return coinApi({ url: 'https://rest.coinapi.io/v1/symbols?filter_asset_id_base=ETH' });
+}
+
+window.fetchSymbols = fetchSymbols;*/
+
+const symbols = ['BTC', 'ETH'];
+
+function coinWebSocket() {
+  return new Observable(observer => {
+    setInterval(() => {
+      const symbol =  symbols[Math.floor(Math.random() * symbols.length)];
+
+      observer.next({
+        "type": "quote",
+        "symbol_id": symbol,
+        "time_exchange": (new Date).toISOString(),
+        "time_coinapi": (new Date).toISOString(),
+        "ask_price": getRandomInt(700, 750),
+        "ask_size": getRandomInt(3000, 3500),
+        "bid_price": getRandomInt(700, 750),
+        "bid_size": getRandomInt(10, 100)
+      });
+    }, 1000);
+  });
+}
 
 class Card extends Component {
   defaultState = {
@@ -39,13 +89,18 @@ class Card extends Component {
   mouseDown$ = new Subject();
 
   componentDidMount() {
-    /* const mouseMove$ = fromEvent(document, 'mousemove');
-    const mouseUp$ = fromEvent(document, 'mouseup'); */
-    const dragstart$ = fromEvent(document, 'dragstart');
+    /*const dragstart$ = fromEvent(document, 'dragstart');
     const dragstop$ = fromEvent(document, 'dragstop');
     const drag$ = fromEvent(document, 'drag');
-    const dragenter$ = fromEvent(document, 'dragenter');
+    const dragenter$ = fromEvent(document, 'dragover');
     const dragleave$ = fromEvent(document, 'dragleave');
+    const dragovers = Array.from(document.querySelectorAll('.mdc-layout-grid__cell'))
+      .map(el => fromEvent(el, 'dragover'));
+    const dragover$ = merge(...dragovers);
+
+    function isDescendantOfSelector(child, selector) {
+
+    }
 
     const dragRequest$ = dragstart$.pipe(
       tap(event => {
@@ -53,31 +108,23 @@ class Card extends Component {
       }),
       switchMap(({ target: dragged }) =>
         merge(
-          dragenter$.pipe(
-            filter(event => {
-              event.preventDefault();
-              console.log(event.target.className);
-              return event.target.classList.contains('mdc-layout-grid__cell');
-            }),
+          dragover$.pipe(
+            
+            take(1),
             tap(event => {
-              console.log(event.target.className);
+              console.log(event);
               event.dataTransfer.dropEffect = 'move';
+              event.target.style.border = '2px solid green';
               event.target.style.boxShadow = '0px 0px 100px rgba(0, 255, 0, 1)';
             }),
-            switchMap(({ target: dropped }) =>
-              dragstop$.pipe(
-                map(() => ({
-                  dragged,
-                  dropped
-                }))
+            /switchMap(({ target: dropped }) =>
+              dragleave$.pipe(
+                tap(({ target  }) => {
+                  target.style.boxShadow = '';
+                }),
+                ignoreElements()
               )
             )
-          ),
-          dragleave$.pipe(
-            tap(({ target  }) => {
-              target.style.boxShadow = '';
-            }),
-            ignoreElements()
           )
         )
       )
@@ -86,29 +133,7 @@ class Card extends Component {
     dragRequest$.subscribe(({ dragged, dropped }) => {
       //const dragged = dragged.parentNode;
       //dropped.parentNode.insertBefore(dragged, dropped);
-    });
-
-    /* const mouseDrag$ = dragstart$.pipe(
-      mergeMap(({ target: draggable, offsetX: startX, offsetY: startY }) =>
-        dragenter$.pipe(
-          map(mouseMoveEvent => ({
-            left: mouseMoveEvent.clientX - startX,
-            top: mouseMoveEvent.clientY - startY,
-            draggable
-          })),
-          takeUntil(dragstop$.pipe(
-            tap(() => {
-              this.setState({ isDragging: false });
-            })
-          ))
-        )
-      )
-    );
-    mouseDrag$.subscribe(({ left, top }) => {
-      //console.log({ left, top });
-      //this.setState({ left, top, isDragging: true });
-    }); */
-
+    });*/
     
   }
 
@@ -131,7 +156,7 @@ class Card extends Component {
           onMouseDown={event => this.mouseDown$.next(event)}
           draggable
         >
-          <div style={{ backgroundColor: 'red', width: '100%', height: 300 }} />
+          <div className="dropzone" style={{ backgroundColor: 'red', width: '100%', height: 300 }} />
           <div className="mdc-card__actions">
             <div className="mdc-card__action-buttons">
               <button className="mdc-button mdc-card__action mdc-card__action--button">Action 1</button>
@@ -146,11 +171,102 @@ class Card extends Component {
   }
 }
 
-class App extends Component {
+class SymbolSearchInput extends Component {
+  symbolsById = null;
+
+  /*updateSymbolTable() {
+    fetchSymbols().pipe(
+        tap(({ response: symbols }) => {
+          debugger;
+        }),
+        map(({ response: symbols }) => {
+          debugger;
+          return symbols.reduce((table, symbol) => {
+            table[symbol.asset_id_base] = symbol;
+            return table;
+          }, {})
+        })
+      )
+        .subscribe(table => {
+          this.symbolsById = table;
+        });
+  }*/
+
+  didChangeInput = (event) => {
+    this.updateSymbolTable();
+  };
+
   render() {
+    return (
+      <input
+        onChange={this.didChangeInput}
+      />
+    )
+  }
+}
+
+class LineGraph extends Component {
+  domainForData(data) {
+    if (data.length) {
+      return [
+        new Date(data[0].x),
+        new Date(data[data.length - 1].x)
+      ];
+    } else {
+      return [];
+    }
+  }
+
+  render() {
+    const { data } = this.props;
+    const width = 500;
+    const height = 200;
+    const domain = this.domainForData(data);
+
+    const xScale = d3.scaleTime()
+      .domain(domain)
+      .rangeRound([0, width]);
+    const yScale = d3.scaleLinear()//.rangeRound([height, 0]);
+    const line = d3.line()
+      .x(d => xScale(new Date(d.x)))
+      .y(d => yScale(d.y));
+    if (data.length) {
+      console.log(domain)
+      console.log(xScale(new Date(data[data.length - 1].x)), yScale(data[0].y));
+  }
+
+    return (
+      <svg width={1000} height={1000}>
+        <path d={line(data)} stroke="red" strokeWidth="2" fill="none" />
+      </svg>
+    );
+  }
+}
+
+class App extends Component {
+  state = {
+    data: []
+  };
+
+  componentDidMount() {
+    coinWebSocket()
+      .subscribe(update => {
+        this.setState({
+          data: [...this.state.data, {
+            x: update.time_exchange,
+            y: update.bid_price
+          }]
+        })
+      });
+  }
+
+  render() {
+    const { data } = this.state;
+
     return (
       <div className="mdc-typography">
         <main>
+          <LineGraph data={data} /> 
           <section className="hero">
             <div className="mdc-layout-grid">
               <div className="mdc-layout-grid__inner">

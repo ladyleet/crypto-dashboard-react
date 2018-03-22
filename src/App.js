@@ -8,8 +8,8 @@ import LineGraph from './LineGraph';
 import Header from './Header';
 import Card from './Card';
 import GrumpyCat from './GrumpyCat';
-import { Observable, fromEvent, Subject, merge, interval } from 'rxjs/index';
-import { ajax } from 'rxjs/ajax';
+import { Observable, fromEvent, Subject, merge, interval } from 'rxjs';
+import { ajax } from 'rxjs';
 import { tap, map, mergeMap, take, takeUntil, switchMap, ignoreElements, filter } from 'rxjs/operators';
 
 function getRandomInt(min, max) {

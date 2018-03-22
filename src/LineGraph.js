@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import * as d3 from 'd3';
+import { Subject } from 'rxjs/Subject';
+import { filter } from 'rxjs/operators';
 
 function makeRainbow(length) {
   if (length % 5 === 0) {
@@ -30,10 +32,11 @@ export default class LineGraph extends Component {
   }
 Î
   render() {
-    const { data } = this.props;
+    const { data, length } = this.props;
     const width = 500;
     const height = 200;
     const domain = this.domainForData(data);
+    const filterRainbow$ = new Subject();
 
     const xScale = d3.scaleTime()
       .domain(domain)
@@ -42,6 +45,12 @@ export default class LineGraph extends Component {
     const line = d3.line()
       .x(d => xScale(new Date(d.x)))
       .y(d => yScale(d.y));
+    // const makeRainbow$ = e => {
+    //   return e.target.matches(length % 2)
+    //   ? this.filterRainbow$.pipe(
+    //     filter((e)) : ""
+    //   )
+    // }; 
 
     return (
       <svg width={500} height={500}>

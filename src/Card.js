@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Subject } from 'rxjs/index';
+import { Subject } from 'rxjs';
 
 export default class Card extends Component {
   defaultState = {
